@@ -85,6 +85,8 @@ function _M.new(self, key)
     -- end
 
     ffi_gc(encrypt_ctx, C.EVP_CIPHER_CTX_cleanup)
+    ffi_gc(decrypt_ctx, C.EVP_CIPHER_CTX_cleanup)
+
     return setmetatable({
         _encrypt_ctx = encrypt_ctx,
         _decrypt_ctx = decrypt_ctx,
