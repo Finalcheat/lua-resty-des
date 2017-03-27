@@ -64,7 +64,7 @@ function _M.new(self, key)
         return nil, "key not set"
     end
     if #key < 8 then
-        return nil, "key length less then 8"
+        return nil, "key length must be 8"
     end
     local encrypt_ctx = ffi_new(ctx_ptr_type)
     local decrypt_ctx = ffi_new(ctx_ptr_type)
@@ -80,10 +80,6 @@ function _M.new(self, key)
         return nil, "EVP_DecryptInit_ex error"
     end
 
-    -- if C.EVP_CIPHER_CTX_set_padding(encrypt_ctx, 0) ~= 1 then
-    --     return nil
-    -- end
-
     ffi_gc(encrypt_ctx, C.EVP_CIPHER_CTX_cleanup)
     ffi_gc(decrypt_ctx, C.EVP_CIPHER_CTX_cleanup)
 
@@ -94,21 +90,21 @@ function _M.new(self, key)
 end
 
 
-function _M.encrypt(self, s)
+function _M.encrypt(self, s, nopadding)
+    nopadding = nopadding or 0
     local s_len = #s
     local max_len = s_len + 8
     local out = ffi_new("unsigned char[?]", max_len)
     local out_len = ffi_new("int[1]")
     local tmp_len = ffi_new("int[1]")
     local ctx = self._encrypt_ctx
-    -- if C.EVP_EncryptInit_ex(ctx, C.EVP_des_ecb(), nil, gen_key, nil) == 0 then
     if C.EVP_EncryptInit_ex(ctx, nil, nil, nil, nil) == 0 then
         return nil, "EVP_EncryptInit_ex error"
     end
 
-    -- if C.EVP_CIPHER_CTX_set_padding(ctx, 0) ~= 1 then
-    --     return nil, "set error"
-    -- end
+    if nopadding ~= 0 and C.EVP_CIPHER_CTX_set_padding(ctx, 0) ~= 1 then
+        return nil, "EVP_CIPHER_CTX_set_padding error"
+    end
 
     if C.EVP_EncryptUpdate(ctx, out, out_len, s, s_len) ~= 1 then
         return nil, "EVP_EncryptUpdate error"
@@ -122,7 +118,8 @@ function _M.encrypt(self, s)
 end
 
 
-function _M.decrypt(self, s)
+function _M.decrypt(self, s, nopadding)
+    nopadding = nopadding or 0
     local s_len = #s
     local out = ffi_new("unsigned char[?]", s_len)
     local out_len = ffi_new("int[1]")
@@ -131,6 +128,10 @@ function _M.decrypt(self, s)
 
     if C.EVP_DecryptInit_ex(ctx, nil, nil, nil, nil) == 0 then
         return nil, "EVP_DecryptInit_ex error"
+    end
+
+    if nopadding ~= 0 and C.EVP_CIPHER_CTX_set_padding(ctx, 0) ~= 1 then
+        return nil, "EVP_CIPHER_CTX_set_padding error"
     end
 
     if C.EVP_DecryptUpdate(ctx, out, out_len, s, s_len) == 0 then
